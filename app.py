@@ -25,7 +25,7 @@ def show_data_matching_info(merged):
     st.write(f"**매칭된 동 개수:** {matched_count} / {total_count}")
 
     if matched_count == 0:
-        st.warning("⚠️ 행정구역 매칭이 되지 않았습니다. 데이터를 확인해주세요.")
+        st.warning("⚠️ 행정구역 매칭이 되지 않았습니다. 데이터를 확인해��세요.")
 
 
 def main():
@@ -41,7 +41,7 @@ def main():
     initialize_session_state()
 
     # 파일 업로드 섹션
-    csv_file_path, geo_file_path, use_files, opacity = render_file_upload_section()
+    csv_file_path, geo_file_path, use_files, map_type, mix_weight, opacity = render_file_upload_section()
 
     if use_files:
         # 데이터 로드
@@ -64,8 +64,8 @@ def main():
         st.divider()
 
         # 지도 생성 및 표시
-        st.subheader("📊 성남시 동별 총인구 분포 지도")
-        population_map = create_population_map(merged, st.session_state.kidsroom_list, opacity)
+        st.subheader("📊 성남시 동별 인구 분포 지도")
+        population_map = create_population_map(merged, st.session_state.kidsroom_list, opacity, map_type, mix_weight)
         st_folium(population_map, width=1200, height=600)
     else:
         st.info("📁 CSV와 GeoJSON 파일을 모두 업로드해주세요.")
@@ -73,4 +73,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

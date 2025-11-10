@@ -35,6 +35,14 @@ def render_file_upload_section():
 
     # 지도 설정 섹션
     st.sidebar.header("🗺️ 지도 설정")
+
+    # 시각화 기준 선택
+    map_type = st.sidebar.radio(
+        "시각화 기준",
+        ('총인구', '인구밀도'),
+        help="지도에 표시할 데이터 기준을 선택하세요. 인구밀도는 면적 대비 인구수입니다."
+    )
+
     opacity = st.sidebar.slider(
         "지도 투명도",
         min_value=0.0,
@@ -44,7 +52,7 @@ def render_file_upload_section():
         help="값이 낮을수록 배경 지도가 잘 보입니다"
     )
 
-    return csv_file, geo_file, use_files, opacity
+    return csv_file, geo_file, use_files, map_type, None, opacity
 
 
 def render_kidsroom_auto_search_tab():
@@ -163,4 +171,3 @@ def render_kidsroom_input_section():
         render_kidsroom_manual_input_tab()
 
     render_kidsroom_list()
-
