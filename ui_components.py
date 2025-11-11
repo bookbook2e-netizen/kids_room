@@ -5,7 +5,7 @@ import streamlit as st
 import os
 from config import DEFAULT_CSV_FILE, DEFAULT_GEO_FILE
 from geocoding import geocode_address
-from kidsroom_manager import add_kidsroom, remove_kidsroom
+from kidsroom_manager import add_kidsroom, remove_kidsroom, update_kidsroom
 
 
 def render_file_upload_section():
@@ -60,8 +60,8 @@ def render_kidsroom_auto_search_tab():
     with st.form("키즈룸_자동추가"):
         kr_address = st.text_input("주소 또는 장소명", placeholder="예: 경기 성남시 수정구 위례광장로 45 또는 플레이포레키즈룸")
 
-        st.success("✅ 카카오 지도 API를 사용하여 정확한 한국 주소 검색 및 장소명 자동 추출이 가능합니다!")
-        st.info("💡 주소를 입력하면 카카오 지도에서 장소명을 자동으로 찾아 키즈룸 이름으로 사용합니다.")
+        st.success("✅ 카카오 지도 API를 사용하여 정확한 한국 주소 검��� 및 장소명 자동 추출이 가능합니다!")
+        st.info("💡 주소를 입력하면 카카오 지도에서 장소명을 자동����로 찾아 키즈룸 이름으로 사용합니다.")
         submitted = st.form_submit_button("🔍 검색하여 추가")
 
         if submitted and kr_address:
@@ -83,7 +83,7 @@ def render_kidsroom_auto_search_tab():
                     ❌ 주소를 찾을 수 없습니다.
                     
                     **해결 방법:**
-                    1. 주소를 정확히 입력했는지 확인하세요
+                    1. 주소를 정확히 입력���는지 확인하세요
                     2. '📍 좌표 직접 입력' 탭으로 이동
                     3. [네이버 지도에서 '{kr_address}' 검색](https://map.naver.com/v5/search/{kr_address})
                     4. 좌표를 확인하여 직접 입력
@@ -121,35 +121,113 @@ def render_kidsroom_manual_input_tab():
 
 
 def render_kidsroom_list():
-    """등록된 키즈룸 목록 렌더링"""
-    if st.session_state.kidsroom_list:
-        st.write("**등록된 키즈룸 목록:**")
+    """등록된 키즈룸 목록 렌더링 (수정/삭제 지원 + 페이징 + 검색)"""
+    if 'kidsroom_page' not in st.session_state:
+        st.session_state.kidsroom_page = 0
+    if 'kidsroom_page_size' not in st.session_state:
+        st.session_state.kidsroom_page_size = 5
 
-        # 스크롤 가능한 컨테이너로 목록 표시
-        list_container = st.container()
-        with list_container:
-            # 최대 높이를 설정한 스크롤 영역
-            st.markdown("""
-            <style>
-            .kidsroom-list {
-                max-height: 300px;
-                overflow-y: auto;
-                padding: 10px;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                margin-bottom: 10px;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+    kids = st.session_state.kidsroom_list
+    if not kids:
+        st.info("등록된 키즈룸이 없습니다")
+        return
 
-            for idx, kr in enumerate(st.session_state.kidsroom_list):
-                col_info, col_del = st.columns([5, 1])
-                with col_info:
-                    st.text(f"• {kr['name']} - {kr['address']}")
-                with col_del:
-                    if st.button("🗑️", key=f"del_{idx}"):
-                        st.session_state.kidsroom_list = remove_kidsroom(st.session_state.kidsroom_list, idx)
-                        st.rerun()
+    st.write("**등록된 키즈룸 목록:**")
+
+    # 검색 필터
+    keyword = st.text_input("🔍 이름/주소 검색", value="", placeholder="키워드 입력")
+    if keyword.strip():
+        filtered = [k for k in kids if keyword.lower() in k['name'].lower() or keyword.lower() in k['address'].lower()]
+    else:
+        filtered = kids
+
+    total = len(filtered)
+
+    # 페이지 크기 선택
+    col_ps, col_info = st.columns([1,3])
+    with col_ps:
+        page_size = st.selectbox("페이지 크기", [5,10,15,20], index=[5,10,15,20].index(st.session_state.kidsroom_page_size) if st.session_state.kidsroom_page_size in [5,10,15,20] else 0)
+        if page_size != st.session_state.kidsroom_page_size:
+            st.session_state.kidsroom_page_size = page_size
+            st.session_state.kidsroom_page = 0
+    with col_info:
+        st.caption(f"총 {total}개 항목")
+
+    # 총 페이지 계산
+    page_size = st.session_state.kidsroom_page_size
+    total_pages = max(1, (total + page_size - 1) // page_size)
+
+    # 현재 페이지 보정
+    if st.session_state.kidsroom_page >= total_pages:
+        st.session_state.kidsroom_page = total_pages - 1
+
+    page = st.session_state.kidsroom_page
+    start = page * page_size
+    end = start + page_size
+    page_items = filtered[start:end]
+
+    # 페이지 네비게이션
+    nav_col1, nav_col2, nav_col3, nav_col4 = st.columns([1,1,2,4])
+    with nav_col1:
+        if st.button("⬅ 이전", disabled=page==0):
+            st.session_state.kidsroom_page -= 1
+            st.rerun()
+    with nav_col2:
+        if st.button("다음 ➡", disabled=page >= total_pages-1):
+            st.session_state.kidsroom_page += 1
+            st.rerun()
+    with nav_col3:
+        st.caption(f"페이지 {page+1} / {total_pages}")
+    with nav_col4:
+        jump = st.number_input("페이지 이동", min_value=1, max_value=total_pages, value=page+1, step=1)
+        if jump-1 != page:
+            st.session_state.kidsroom_page = jump-1
+            st.rerun()
+
+    # 스크롤 가능한 영역
+    st.markdown("""
+    <style>
+    .kidsroom-scroll-wrapper {max-height:420px; overflow-y:auto; border:1px solid #ddd; padding:6px 10px; border-radius:6px; background:#fafafa;}
+    .kidsroom-scroll-wrapper .streamlit-expanderHeader {font-size:0.9rem;}
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="kidsroom-scroll-wrapper">', unsafe_allow_html=True)
+    if not page_items:
+        st.warning("검색 결과 없음")
+    for idx, kr in enumerate(page_items):
+        global_index = filtered.index(kr)  # 원본 인덱스 (삭제/수정 반영 위해)
+        with st.expander(f"{global_index+1}. {kr['name']} - {kr['address']}"):
+            col1, col2, col3, col4, col5 = st.columns([2,2,1.5,1.5,1])
+            new_name = col1.text_input("이름", value=kr['name'], key=f"name_{global_index}")
+            new_addr = col2.text_input("주소", value=kr['address'], key=f"addr_{global_index}")
+            new_lat = col3.number_input("위도", value=float(kr['lat']), format="%.6f", key=f"lat_{global_index}")
+            new_lon = col4.number_input("경도", value=float(kr['lon']), format="%.6f", key=f"lon_{global_index}")
+
+            if col5.button("💾 저장", key=f"save_{global_index}"):
+                st.session_state.kidsroom_list = update_kidsroom(
+                    st.session_state.kidsroom_list,
+                    global_index,
+                    name=new_name,
+                    address=new_addr,
+                    lat=new_lat,
+                    lon=new_lon
+                )
+                st.success("저장되었습니다")
+                st.rerun()
+
+            del_col, info_col = st.columns([1,4])
+            if del_col.button("🗑️ 삭제", key=f"del_{global_index}"):
+                st.session_state.kidsroom_list = remove_kidsroom(st.session_state.kidsroom_list, global_index)
+                st.warning("삭제되었습니다")
+                # 삭제 후 페이지 재조정
+                if (total-1) <= page*page_size and page>0:
+                    st.session_state.kidsroom_page -= 1
+                st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # 페이지 요약
+    st.caption(f"현재 표시: {start+1 if total else 0} - {min(end, total)} / {total}")
 
 
 def render_kidsroom_input_section():
