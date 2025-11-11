@@ -3,17 +3,21 @@
 """
 
 import streamlit as st
+import os
 
-# 카카오 API 키 (Streamlit Secrets에서 로드)
-try:
-    KAKAO_API_KEY = st.secrets["KAKAO_API_KEY"]
-except FileNotFoundError:
-    # 로컬 환경에서 secrets.toml 파일이 없을 경우를 대비
-    KAKAO_API_KEY = "cc95b8fce354c33266491ac0e040b376"
-except KeyError:
-    # secrets.toml 파일에 키가 없을 경우를 대비
-    st.error("Streamlit Secrets에 KAKAO_API_KEY가 설정되지 않았습니다.")
+# 카카오 API 키 (Streamlit Secrets 또는 환경변수에서 로드)
+# 우선순위: st.secrets -> 환경변수 -> 빈 문자열
+_kakao_secret = st.secrets.get("KAKAO_API_KEY") if hasattr(st, 'secrets') else None
+_env_key = os.environ.get("KAKAO_API_KEY")
+
+if _kakao_secret:
+    KAKAO_API_KEY = _kakao_secret
+elif _env_key:
+    KAKAO_API_KEY = _env_key
+    st.info("환경변수 KAKAO_API_KEY 사용 중")
+else:
     KAKAO_API_KEY = ""
+    st.warning("KAKAO_API_KEY가 설정되지 않았습니다. .streamlit/secrets.toml 또는 환경변수로 설정하세요.")
 
 # 기본 데이터 파일 경로
 DEFAULT_CSV_FILE = "data/202510_202510_연령별인구현황_월간.csv"
@@ -23,4 +27,3 @@ KIDSROOM_DATA_FILE = "data/kidsroom_data.json"
 # 지도 설정
 MAP_CENTER = [37.4, 127.13]
 MAP_ZOOM_START = 12
-
