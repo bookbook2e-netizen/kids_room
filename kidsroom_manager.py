@@ -4,6 +4,7 @@
 import json
 import os
 import datetime
+import hashlib
 from config import KIDSROOM_DATA_FILE
 
 
@@ -87,3 +88,14 @@ def update_kidsroom(kidsroom_list, index, name=None, address=None, lat=None, lon
                 pass
         save_kidsroom_data(kidsroom_list)
     return kidsroom_list
+
+
+def get_kidsroom_file_hash():
+    """kidsroom_data.json 파일 내용 SHA256 해시 반환 (없으면 None)"""
+    if os.path.exists(KIDSROOM_DATA_FILE):
+        try:
+            with open(KIDSROOM_DATA_FILE, 'rb') as f:
+                return hashlib.sha256(f.read()).hexdigest()
+        except Exception:
+            return None
+    return None
