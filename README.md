@@ -12,9 +12,12 @@ kids_room/
 ├── map_generator.py            # 지도 생성
 ├── ui_components.py            # Streamlit UI 컴포넌트
 └── data/                       # 데이터 디렉토리
-    ├── 202510_202510_연령별인구현황_월간.csv
-    ├── hangjeongdong_경기도.geojson
-    └── kidsroom_data.json
+    ├── 202510_202510_연령별인구현황_월간_성남시.csv
+    ├── 202510_202510_연령별인구현황_월간_광주시.csv
+    ├── 202510_202510_연령별인구현황_월간_용인시.csv
+    ├── HangJeongDong_ver20250401.geojson
+    ├── kidsroom_data.json
+    └── backups/
 ```
 
 ## 모듈 설명
@@ -72,7 +75,7 @@ streamlit run app.py
    - 키즈룸 추가/삭제
 
 3. **데이터 영구 저장**
-   - 키즈룸 데이터 JSON 파일 저장
+   - 키즈룸 데이터 JSON 파일 ��장
    - 앱 재시작 시 자동 로드
 
 ## 리팩토링 개선 사항
@@ -83,3 +86,37 @@ streamlit run app.py
 - ✅ 가독성: 명확한 함수명과 모듈 구조
 - ✅ 테스트 용이성: 각 모듈을 독립적으로 테스트 가능
 
+## 다도시 지원 (성남시 · 광주시 · 용인시)
+
+현재 애플리케이션은 `config.py`의 `CITY_FILE_MAP`을 통해 세 도시의 월간 연령별 인구 CSV를 지원합니다.
+
+### 파일명 규칙
+```
+202510_202510_연령별인구현황_월간_<도시명>.csv
+```
+예: `202510_202510_연령별인구현황_월간_성남시.csv`
+
+광주시/용인시는 macOS에서 Unicode 분해형(NFD) 파일명이 생성될 수 있어 코드에서 NFC/NFD 정규화를 모두 시도합니다.
+
+### 인코딩 표준화
+- 모든 CSV는 UTF-8(BOM 포함, `utf-8-sig`)으로 저장하는 것을 권장
+- 로딩 시 `utf-8` → 실패 시 `cp949` 폴백
+
+### 다도시 로드 함수
+`data_loader.load_population_for_city(city)` : 단일 도시 처리
+
+`data_loader.load_all_populations()` : `{city: DataFrame}` 반환
+
+### 도시 선택 UI
+사이드바에서 도시를 선택하면 해당 도시의 CSV와 공통 GeoJSON을 사용하여 Choropleth를 생성합니다.
+
+## Git 사용 참고
+저장소가 초기화되지 않았다면 다음 명령으로 초기화 후 원격 연결:
+```bash
+git init
+git add .
+git commit -m "init"
+git branch -M main
+git remote add origin <YOUR_REPO_URL>
+git push -u origin main
+```
