@@ -6,7 +6,7 @@ from streamlit_folium import st_folium
 
 # 모듈 임포트
 from data_loader import load_csv_file, load_geojson_file, process_population_data, process_geodata, merge_data
-from kidsroom_manager import load_kidsroom_data, get_kidsroom_file_hash, save_kidsroom_data
+from kidsroom_manager import load_kidsroom_data, get_kidsroom_file_hash
 from map_generator import create_population_map
 from ui_components import render_file_upload_section, render_kidsroom_input_section
 
@@ -32,17 +32,14 @@ def show_data_matching_info(merged):
 
 def main():
     """메인 애플리케이션"""
-    # 페이지 설정
-    st.set_page_config(page_title="성남시 인구 현황 및 키즈룸 분석", layout="wide")
+    st.set_page_config(page_title="도시별 인구 현황 및 키즈룸 분석", layout="wide")
 
-    # 제목
-    st.title("🧒 성남시 동별 인구 현황 및 키즈룸 지도")
+    st.title("🧒 도시별 동별 인구 현황 및 키즈룸 지도")
     st.markdown("행정동별 총인구 데이터와 키즈룸 위치를 결합한 지도 기반 상권 분석 시각화")
 
-    # 세션 스테이트 초기화
     initialize_session_state()
 
-    csv_file_path, geo_file_path, use_files, map_type, mix_weight, opacity = render_file_upload_section()
+    csv_file_path, geo_file_path, use_files, map_type, mix_weight, opacity, city_name = render_file_upload_section()
 
     # ==== 사이드바 디버그 / 동기화 기능 추가 ====
     with st.sidebar.expander("데이터 동기화 & 디버그", expanded=False):
@@ -80,7 +77,7 @@ def main():
         df = load_csv_file(csv_file_path)
         gdf = load_geojson_file(geo_file_path)
         df = process_population_data(df)
-        gdf_filtered = process_geodata(gdf, city_name="성남시")
+        gdf_filtered = process_geodata(gdf, city_name=city_name)
         merged = merge_data(gdf_filtered, df)
 
         # 데이터 매칭 정보 & kidsroom ���약 상단 표시
@@ -93,7 +90,7 @@ def main():
             if st.session_state.kidsroom_list:
                 st.caption(', '.join(k['name'] for k in st.session_state.kidsroom_list[:3]) + (" ..." if len(st.session_state.kidsroom_list)>3 else ""))
 
-        st.subheader("📊 성남시 동별 인구 분포 지도")
+        st.subheader(f"📊 {city_name} 동별 인구 분포 지도")
         population_map = create_population_map(merged, st.session_state.kidsroom_list, opacity, map_type, mix_weight)
         st_folium(population_map, width=1200, height=600)
 
@@ -101,7 +98,7 @@ def main():
         st.subheader("🎪 키즈룸 위치 추가 / 관리")
         render_kidsroom_input_section()
     else:
-        st.info("📁 CSV와 GeoJSON 파일을 모두 업로드해주세요.")
+        st.info("📁 CSV와 GeoJSON 파일을 모두 업로드하거나 기본 파일을 사용해주세요.")
 
 
 if __name__ == "__main__":

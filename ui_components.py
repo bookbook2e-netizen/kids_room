@@ -3,30 +3,35 @@ Streamlit UI 컴포넌트 모듈
 """
 import streamlit as st
 import os
-from config import DEFAULT_CSV_FILE, DEFAULT_GEO_FILE
+from config import DEFAULT_CSV_FILE, DEFAULT_GEO_FILE, DEFAULT_CITY, CITY_FILE_MAP, get_city_csv_path
 from geocoding import geocode_address
 from kidsroom_manager import add_kidsroom, remove_kidsroom, update_kidsroom
 
 
 def render_file_upload_section():
-    """파일 업로드 섹션 렌더링"""
+    """파일 업로드 섹션 렌더링 (도시 선택 추가)"""
     st.sidebar.header("📂 데이터 파일 설정")
-    use_default = st.sidebar.checkbox("기본 파일 사용", value=True, help="data 디렉토리의 기본 파일을 사용합니다")
+
+    # 도시 선택
+    city_name = st.sidebar.selectbox("도시 선택", list(CITY_FILE_MAP.keys()), index=list(CITY_FILE_MAP.keys()).index(DEFAULT_CITY))
+
+    use_default = st.sidebar.checkbox("기본 파일 사용", value=True, help="선택한 도시의 기본 CSV/GeoJSON 파일을 사용합니다")
 
     if use_default:
-        if os.path.exists(DEFAULT_CSV_FILE) and os.path.exists(DEFAULT_GEO_FILE):
-            st.sidebar.success(f"✅ 기본 파일 로드됨")
-            st.sidebar.text(f"CSV: {DEFAULT_CSV_FILE}")
+        csv_candidate = get_city_csv_path(city_name)
+        if csv_candidate and os.path.exists(csv_candidate) and os.path.exists(DEFAULT_GEO_FILE):
+            st.sidebar.success(f"✅ 기본 파일 로드됨 ({city_name})")
+            st.sidebar.text(f"CSV: {csv_candidate}")
             st.sidebar.text(f"GeoJSON: {DEFAULT_GEO_FILE}")
-            csv_file, geo_file, use_files = DEFAULT_CSV_FILE, DEFAULT_GEO_FILE, True
+            csv_file, geo_file, use_files = csv_candidate, DEFAULT_GEO_FILE, True
         else:
-            st.sidebar.error("❌ 기본 파일을 찾을 수 없습니다")
-            st.sidebar.info("파일 업로드 옵션을 사용하세요")
+            st.sidebar.error(f"❌ {city_name} 기본 파일을 찾을 수 없습니다")
+            st.sidebar.info("파일 업로드 옵션을 사용해주세요")
             csv_file, geo_file, use_files = None, None, False
     else:
-        st.sidebar.info("📤 파일을 업로드하세요")
-        uploaded_csv = st.sidebar.file_uploader("인구 데이터 CSV", type=["csv"])
-        uploaded_geo = st.sidebar.file_uploader("GeoJSON 파일", type=["geojson", "json"])
+        st.sidebar.info("📤 파일을 업로드해주세요")
+        uploaded_csv = st.sidebar.file_uploader("인구 데이터 CSV", type=["csv"], key="csv_upload")
+        uploaded_geo = st.sidebar.file_uploader("GeoJSON 파일", type=["geojson", "json"], key="geo_upload")
 
         if uploaded_csv and uploaded_geo:
             csv_file, geo_file, use_files = uploaded_csv, uploaded_geo, True
@@ -36,7 +41,6 @@ def render_file_upload_section():
     # 지도 설정 섹션
     st.sidebar.header("🗺️ 지도 설정")
 
-    # 시각화 기준 선택
     map_type = st.sidebar.radio(
         "시각화 기준",
         ('총인구', '인구밀도'),
@@ -52,7 +56,8 @@ def render_file_upload_section():
         help="값이 낮을수록 배경 지도가 잘 보입니다"
     )
 
-    return csv_file, geo_file, use_files, map_type, None, opacity
+    # 반환에 city_name 추가 (호출부 수정 필요)
+    return csv_file, geo_file, use_files, map_type, None, opacity, city_name
 
 
 def render_kidsroom_auto_search_tab():

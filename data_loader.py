@@ -4,16 +4,18 @@
 import pandas as pd
 import geopandas as gpd
 import streamlit as st
+from config import CITIES, get_city_csv_path
 
 
 def load_csv_file(file_path):
-    """CSV 파일 로드"""
+    """CSV 파일 로드 (UTF-8 우선, 실패 시 CP949 폴백)"""
     try:
         if isinstance(file_path, str):
-            # 파일 경로인 경우
-            return pd.read_csv(file_path, encoding="utf-8")
+            try:
+                return pd.read_csv(file_path, encoding="utf-8")
+            except UnicodeDecodeError:
+                return pd.read_csv(file_path, encoding="cp949")
         else:
-            # 업로드된 파일인 경우
             file_path.seek(0)
             try:
                 return pd.read_csv(file_path, encoding="utf-8")
@@ -36,8 +38,12 @@ def load_geojson_file(file_path):
 
 def process_population_data(df):
     """인구 데이터 처리"""
-    # 총인구 컬럼 찾기
-    total_pop_col = [c for c in df.columns if '총인구' in c and '계_' in c][0]
+    # 총인구 컬럼 찾기 (패턴 강화)
+    total_candidates = [c for c in df.columns if ('총인구' in c or '총인구수' in c) and ('계' in c or '계_' in c)]
+    if not total_candidates:
+        st.error(f"총인구 컬럼을 찾을 수 없습니다. 사용 가능한 컬럼: {list(df.columns)[:15]} ...")
+        st.stop()
+    total_pop_col = total_candidates[0]
     df['총인구'] = df[total_pop_col].replace(",", "", regex=True).astype(float)
 
     # 행정구역에서 동 이름만 추출
@@ -82,3 +88,23 @@ def merge_data(gdf_filtered, df):
     )
 
     return merged
+
+
+def load_population_for_city(city: str):
+    """단일 도시 인구 CSV 로드 후 process_population_data 적용"""
+    path = get_city_csv_path(city)
+    if not path or not path.endswith('.csv'):
+        st.error(f"도시 CSV 파일을 찾을 수 없습니다: {city}")
+        return None
+    df = load_csv_file(path)
+    return process_population_data(df)
+
+
+def load_all_populations():
+    """모든 도시 인구 데이터 dict 형태로 로드 {city: processed_df}"""
+    result = {}
+    for city in CITIES:
+        df = load_population_for_city(city)
+        if df is not None:
+            result[city] = df
+    return result
